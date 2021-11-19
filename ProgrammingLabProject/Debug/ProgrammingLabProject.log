@@ -1,0 +1,14 @@
+﻿  main.c
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(90,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(198,18): warning C4244: '함수': 'time_t'에서 'unsigned int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(216,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(195,9): warning C4101: 'y' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(195,6): warning C4101: 'x' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(229,11): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getch. See online help for details.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(222,16): warning C4101: 'start_time' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(223,6): warning C4101: 'gold_time' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(222,41): warning C4101: 'last_remain_time' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(221,16): warning C4101: 'ch' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(222,28): warning C4101: 'remain_time' :참조되지 않은 지역 변수입니다.
+C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(222,6): warning C4101: 'run_time' :참조되지 않은 지역 변수입니다.
+  ProgrammingLabProject.vcxproj -> C:\A_TaskTable\ProgrammingLabProject\Debug\ProgrammingLabProject.exe
