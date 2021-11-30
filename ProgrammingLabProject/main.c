@@ -1,9 +1,8 @@
 #include <stdio.h>
-#include <conio.h>
-#include <Windows.h>
-#include <time.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <Windows.h>
+#include <conio.h>
 
 // 색상 정의
 #define BLACK	0
@@ -28,18 +27,11 @@
 
 #define ESC 0x1b //  ESC 누르면 종료
 
-#define SPECIAL1 0xe0 // 특수키는 0xe0 + key 값으로 구성된다.
-#define SPECIAL2 0x00 // keypad 경우 0x00 + key 로 구성된다.
-
-#define UP  0x48 // Up key는 0xe0 + 0x48 두개의 값이 들어온다.
-#define DOWN 0x50
-#define LEFT 0x4b
-#define RIGHT 0x4d
-
-#define UP2		'w'//player2 는 AWSD 로 방향키 대신
-#define DOWN2	's'
-#define LEFT2	'a'
-#define RIGHT2	'd'
+#define UP		'w' // WASD로 이동
+#define DOWN	's'
+#define LEFT	'a'
+#define RIGHT	'd'
+#define SPACE	' ' // 스페이스바로 발사
 
 #define WIDTH 80
 #define HEIGHT 24
@@ -48,9 +40,14 @@ int Delay = 100; // 100 msec delay, 이 값을 줄이면 속도가 빨라진다.
 int keep_moving = 1; // 1:계속이동, 0:한칸씩이동.
 int life = 5; // 기회
 int score = 0;
-int golds[WIDTH][HEIGHT] = { 0 }; // 1이면 Gold 있다는 뜻
-int target_print_interval = 3; // 벽돌 표시 간격
-int called[2];
+int brick[WIDTH][HEIGHT - 2] = { 0 }; // 1이면 Gold 있다는 뜻
+int brick_print_interval = 3; // 벽돌 표시 간격
+int brick_count;
+int called; 
+int frame_count = 0; // game 진행 frame count 로 속도 조절용으로 사용된다.
+int player_frame_sync = 10; // 처음 시작은 10 frame 마다 이동, 즉, 100msec 마다 이동
+int player_frame_sync_count = 0;
+int gold_frame_sync = 1; // 50 frame 마다 한번씩 gold 를 움직인다.
 
 void removeCursor(void) { // 커서를 안보이게 한다
 
@@ -114,6 +111,75 @@ void showLife() // 남은 기회를 보여준다.
 	textcolor(WHITE, BLACK);
 }
 
+#define BRICK	"□"
+void show_brick()
+{
+	int x, y;
+	x = rand() % WIDTH;
+	y = rand() % (HEIGHT / 4) + 1;  // 제일 상단은 피한다
+	//textcolor(YELLOW2, GRAY1);
+	gotoxy(x, y);
+	printf(BRICK);
+	brick[x][y] = 1;
+	textcolor(WHITE, BLACK);
+}
+
+void move_brick() {
+	int x, y, dx, dy, newx, newy;
+	int newgolds[WIDTH][HEIGHT] = { 0 };
+	static call_count = 0;
+
+	// gold 수가 없을 수 있다.
+	if (brick_count == 0)
+		return;
+	for (x = 0; x < WIDTH; x++) {
+		for (y = 0; y < HEIGHT; y++) {
+			if (brick[x][y]) {
+				dx = rand() % 3 - 1; // -1 0 1
+				dy = rand() % 3 - 1; // -1 0 1
+				newx = x + dx;
+				newy = y + dy;
+				if (newx == WIDTH) newx = WIDTH - 1;
+				if (newx < 0) newx = 0;
+				if (newy > HEIGHT - 1) newy = HEIGHT - 1;
+				if (newy < 1) newy = 1;
+				gotoxy(x, y);
+				textcolor(WHITE, WHITE);
+				printf(" "); // erase gold
+				textcolor(YELLOW2, GRAY1);
+				gotoxy(newx, newy);
+				printf(BRICK);
+				newgolds[newx][newy] = 1; // 이동된 golds의 좌표
+				textcolor(BLACK, WHITE);
+			}
+		}
+	}
+	memcpy(brick, newgolds, sizeof(newgolds)); // 한번에 gold 위치를 조정한다.
+}
+
+void flush_key()
+{
+	while (kbhit())
+		getch();
+}
+
+void draw_box(int x1, int y1, int x2, int y2, char* ch)
+{
+	int x, y;
+	for (x = x1; x <= x2; x += 1) {
+		gotoxy(x, y1);
+		printf("%s", ch);
+		gotoxy(x, y2);
+		printf("%s", ch);
+	}
+	for (y = y1; y <= y2; y++) {
+		gotoxy(x1, y);
+		printf("%s", ch);
+		gotoxy(x2, y);
+		printf("%s", ch);
+	}
+}
+
 void draw_hline(int y, int x1, int x2, char ch)
 {
 	gotoxy(x1, y);
@@ -121,16 +187,16 @@ void draw_hline(int y, int x1, int x2, char ch)
 		putchar(ch);
 }
 
-void player1(unsigned char ch)
+void player(unsigned char ch)
 {
 	static int oldx = 40, oldy = 20, newx = 40, newy = 20;
 	int move_flag = 0;
 	static unsigned char last_ch = 0;
 
-	if (called[0] == 0) { // 처음 또는 Restart
+	if (!called) { // 처음 또는 Restart
 		oldx = 40, oldy = 20, newx = 40, newy = 20;
 		putstar(oldx, oldy, PLAYER);
-		called[0] = 1;
+		called = 1;
 		last_ch = 0;
 		ch = 0;
 	}
@@ -181,9 +247,9 @@ void player1(unsigned char ch)
 		putstar(newx, newy, PLAYER); // 새로운 위치에서 * 를 표시한다.
 		oldx = newx; // 마지막 위치를 기억한다.
 		oldy = newy;
-		if (golds[newx][newy]) {
+		if (brick[newx][newy]) {
 			score++;
-			golds[newx][newy] = 0;
+			brick[newx][newy] = 0;
 			showscore(0);
 		}
 	}
@@ -197,12 +263,12 @@ void init_game()
 
 	srand(time(NULL));
 	score = 0;
-	//called[0] = called[1] = 0;
-	/*골드의 무작위 생성이 아닌 벽돌의 순차적 생성에 관한 고찰 필요*/
-	//for (x = 0; x < WIDTH; x++)
-	//	for (y = 0; y < HEIGHT; y++)
-	//		golds[x][y] = 0;
-	target_print_interval = 3;
+
+	for (x = 0; x < WIDTH; x++)
+		for (y = 0; y < HEIGHT; y++)
+			brick[x][y] = 0;
+
+	brick_print_interval = 3;
 
 	keep_moving = 1;
 	Delay = 100;
@@ -215,17 +281,114 @@ void init_game()
 	textcolor(WHITE, BLACK);
 	sprintf(cmd, "mode con cols=%d lines=%d", WIDTH, HEIGHT);
 	system(cmd);
+	
+	draw_hline(HEIGHT - 2, 0, WIDTH - 1, '─');
+
+	called = 0; // set player
+	player(0); 
 }
+
+void firstWindows() {
+	removeCursor();
+	draw_box(0, 0, WIDTH - 1, HEIGHT - 1, "▒");
+	gotoxy(25, HEIGHT / 2);
+	printf("현재 초기화면 디자인중입니다.");
+}
+
 
 void main() {
 	unsigned char ch;
-	int run_time, start_time, remain_time, last_remain_time;
-	int gold_time;
+	int run_time, start_time, gold_time;
+	int brick_spawn_time;
+
+	int firstWindow_CallCount;
+
+START:
+
+// initialize
+	firstWindows();
+	firstWindow_CallCount = 0;
+	gold_time = 0;
+
+	while (1) { 
+		gotoxy(33, HEIGHT / 2 + 5);
+		Sleep(250);
+		if (firstWindow_CallCount & 1) printf("press to start");
+		else printf("              ");
+		if (kbhit()) break;
+		++firstWindow_CallCount;
+	}
+
+	flush_key(); // 버퍼 한번 비우기
 
 	init_game();
 	showscore();
 	showLife();
-	do{
-		player1(getch());
-	} while (1);
+	start_time = time(NULL);
+
+// main loop
+	while (1) {
+		run_time = time(NULL) - start_time;
+		if (run_time > gold_time && !(run_time % brick_print_interval)){
+			show_brick();
+			gold_time = run_time;
+		}
+
+		if (kbhit()) {
+			ch = getch();
+			if (ch == ESC) break;
+			//player(ch);
+	
+			switch (ch) {
+			case UP:
+			case DOWN:
+			case LEFT:
+			case RIGHT:
+				player(ch);
+				if (!(frame_count % player_frame_sync == 0))
+					player(0);
+				break;
+			default:// 방향 전환이 아니면
+				if (frame_count % player_frame_sync == 0)
+					player(0);
+			}
+		}
+		if (frame_count % gold_frame_sync == 0)
+			move_brick(); // 벽돌의 위치를 변경한다.
+		Sleep(Delay); // Delay 값을 줄이고
+		frame_count++; // frame_count 값으로 속도 조절을 한다.
+	}
+
+
+
+
+
+	// end
+	gotoxy(30, 7);
+	textcolor(GREEN2, WHITE);
+	printf("   YOUR SCORE : %2d   ", score);
+
+	while (1) {
+		int c1, c2;
+		do { // 색을 변경하면서 Game Over 출력
+			c1 = rand() % 16;
+			c2 = rand() % 16;
+		} while (c1 == c2);
+		textcolor(c1, c2);
+		gotoxy(32, 10);
+		printf("** Game Over **");
+		gotoxy(24, 13);
+		textcolor(BLACK, WHITE);
+		printf("  Hit (R) to Restart (Q) to Quit  ");
+		Sleep(300);
+		if (kbhit()) {
+			ch = getch();
+			if (ch == 'r') goto START;
+			else if(ch == 'q') break;
+		}
+
+
+	}
+	textcolor(WHITE, BLACK);
+	gotoxy(0, HEIGHT-1);
 }
