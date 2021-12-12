@@ -22,8 +22,9 @@
 #define YELLOW2	14
 #define WHITE	15
 
-#define PLAYER 'M' // player1 표시
+#define PLAYER "<-*->" // player1 표시
 #define BLANK ' ' // ' ' 로하면 흔적이 지워진다 
+#define BRICK	"□" // 벽돌. 특수문자이다.
 
 #define ESC 0x1b //  ESC 누르면 종료
 
@@ -36,18 +37,19 @@
 #define WIDTH 80
 #define HEIGHT 24
 
-int Delay = 100; // 100 msec delay, 이 값을 줄이면 속도가 빨라진다.
+int Delay = 1;// msec
 int keep_moving = 1; // 1:계속이동, 0:한칸씩이동.
 int life = 5; // 기회
-int score = 0;
-int brick[WIDTH][HEIGHT - 2] = { 0 }; // 1이면 Gold 있다는 뜻
-int brick_print_interval = 3; // 벽돌 표시 간격
+int score = 0; // 점수
+int brick[WIDTH / 2][HEIGHT - 2] = { 0 }; // 1이면 벽돌이 있다는 뜻, 벽돌이 2byte 문자열이므로, 행을 반으로하고 이후에 2를 곱한다.
+int bullet[WIDTH][HEIGHT - 2] = { 0 }; // 1이면 총알이 있다는 뜻
 int brick_count;
 int called; 
-int frame_count = 0; // game 진행 frame count 로 속도 조절용으로 사용된다.
-int player_frame_sync = 10; // 처음 시작은 10 frame 마다 이동, 즉, 100msec 마다 이동
-int player_frame_sync_count = 0;
-int gold_frame_sync = 1; // 50 frame 마다 한번씩 gold 를 움직인다.
+int frame_count = 1; // game 진행 frame count 로 속도 조절용으로 사용된다.
+int brick_create_frame_sync = 10; // 벽돌 생성 간격
+int player_frame_sync = 7; // 처음 시작은 10 frame 마다 이동, 즉, 100msec 마다 이동
+int brick_frame_sync = 1; //  frame 마다 한번씩 brick를 움직인다.
+// int bullet_frame_sync = 1; // 1 frame 마다 한번씩 bullet을 움직인다. -> 굳이?
 
 void removeCursor(void) { // 커서를 안보이게 한다
 
@@ -62,17 +64,22 @@ void gotoxy(int x, int y) //내가 원하는 위치로 커서 이동
 	COORD pos = { x, y };
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);// WIN32API 함수입니다. 이건 알필요 없어요
 }
-/*문자열의 경우도 고찰해야 한다.*/
-void putstar(int x, int y, char ch)
+
+void putplayer(int x, int y, char * ch)
 {
 	gotoxy(x, y);
-	putchar(ch);
+	printf(ch);
 }
 
 void erasestar(int x, int y)
 {
 	gotoxy(x, y);
 	putchar(BLANK);
+}
+
+void eraseplayer(int x, int y) {
+	gotoxy(x - 2, y);
+	printf("       ");
 }
 
 void textcolor(int fg_color, int bg_color)
@@ -111,50 +118,44 @@ void showLife() // 남은 기회를 보여준다.
 	textcolor(WHITE, BLACK);
 }
 
-#define BRICK	"□"
 void show_brick()
 {
-	int x, y;
-	x = rand() % WIDTH;
-	y = rand() % (HEIGHT / 4) + 1;  // 제일 상단은 피한다
-	//textcolor(YELLOW2, GRAY1);
-	gotoxy(x, y);
+	int x = rand() % (WIDTH / 2); // 벽돌이 2byte이므로, 너비의 절반까지의 랜덤값 생성
+	int y = rand() % (HEIGHT / 4) + 1;  // 제일 상단은 피한다
+	gotoxy(2 * x, y); // 2byte이므로 각 벽돌이 서로의 출력을 지우지 않게 하기 위해 랜덤값 * 2
 	printf(BRICK);
 	brick[x][y] = 1;
-	textcolor(WHITE, BLACK);
+	++brick_count;
 }
 
 void move_brick() {
-	int x, y, dx, dy, newx, newy;
-	int newgolds[WIDTH][HEIGHT] = { 0 };
-	static call_count = 0;
+	int x, y, newy = 0;
+	int newbricks[WIDTH/2][HEIGHT-2] = { 0 };
+	static int call_count = 0;
 
-	// gold 수가 없을 수 있다.
-	if (brick_count == 0)
+	if (brick_count == 0) // 벽돌이 없는 경우 그냥 return
 		return;
-	for (x = 0; x < WIDTH; x++) {
-		for (y = 0; y < HEIGHT; y++) {
-			if (brick[x][y]) {
-				dx = rand() % 3 - 1; // -1 0 1
-				dy = rand() % 3 - 1; // -1 0 1
-				newx = x + dx;
-				newy = y + dy;
-				if (newx == WIDTH) newx = WIDTH - 1;
-				if (newx < 0) newx = 0;
-				if (newy > HEIGHT - 1) newy = HEIGHT - 1;
-				if (newy < 1) newy = 1;
-				gotoxy(x, y);
-				textcolor(WHITE, WHITE);
-				printf(" "); // erase gold
-				textcolor(YELLOW2, GRAY1);
-				gotoxy(newx, newy);
-				printf(BRICK);
-				newgolds[newx][newy] = 1; // 이동된 golds의 좌표
-				textcolor(BLACK, WHITE);
+
+	for (x = 0; x < WIDTH/2; x++) {
+		for (y = 0; y < HEIGHT-1; y++) {
+			if (brick[x][y]) { // 블럭이 있는 경우
+				newy = y + 1; // y좌표 
+				if (newy < HEIGHT - 2) { // 벽돌이 바닥에 닿지 않는다면
+					gotoxy(2*x, y);
+					printf("  "); // erase brick
+					gotoxy(2*x, newy);
+					printf(BRICK);
+					newbricks[x][newy] = 1; // 이동된 golds의 좌표
+				}
+				else { // 바닥에 닿았다면
+					gotoxy(2*x, y);
+					printf("  "); // erase brick
+					--life; // life - 1
+				}
 			}
 		}
 	}
-	memcpy(brick, newgolds, sizeof(newgolds)); // 한번에 gold 위치를 조정한다.
+	memcpy(brick, newbricks, sizeof(newbricks)); // 한번에 gold 위치를 조정한다.
 }
 
 void flush_key()
@@ -165,14 +166,13 @@ void flush_key()
 
 void draw_box(int x1, int y1, int x2, int y2, char* ch)
 {
-	int x, y;
-	for (x = x1; x <= x2; x += 1) {
+	for (int x = x1; x < x2; ++x) {
 		gotoxy(x, y1);
 		printf("%s", ch);
 		gotoxy(x, y2);
 		printf("%s", ch);
 	}
-	for (y = y1; y <= y2; y++) {
+	for (int y = y1; y < y2; ++y) {
 		gotoxy(x1, y);
 		printf("%s", ch);
 		gotoxy(x2, y);
@@ -195,7 +195,7 @@ void player(unsigned char ch)
 
 	if (!called) { // 처음 또는 Restart
 		oldx = 40, oldy = 20, newx = 40, newy = 20;
-		putstar(oldx, oldy, PLAYER);
+		putplayer(oldx, oldy, PLAYER);
 		called = 1;
 		last_ch = 0;
 		ch = 0;
@@ -243,14 +243,24 @@ void player(unsigned char ch)
 		break;
 	}
 	if (move_flag) {
-		erasestar(oldx, oldy); // 마지막 위치의 * 를 지우고
-		putstar(newx, newy, PLAYER); // 새로운 위치에서 * 를 표시한다.
+		//erasestar(oldx, oldy); // 마지막 위치의 player 를 지우고
+		eraseplayer(oldx, oldy);
+		if (newx & 1) {// 홀수, 벽돌을 같이 지우기 위함
+			erasestar(newx - 1, newy);
+			erasestar(newx, newy);
+		}
+		else {
+			erasestar(newx + 1, newy);
+			erasestar(newx, newy);
+		}
+		putplayer(newx, newy, PLAYER); // 새로운 위치에서 player를 표시한다.
 		oldx = newx; // 마지막 위치를 기억한다.
 		oldy = newy;
-		if (brick[newx][newy]) {
+		if (brick[newx/2][newy]) {
 			score++;
-			brick[newx][newy] = 0;
-			showscore(0);
+			brick[newx/2][newy] = 0;
+			--brick_count;
+			showscore();
 		}
 	}
 
@@ -264,11 +274,11 @@ void init_game()
 	srand(time(NULL));
 	score = 0;
 
-	for (x = 0; x < WIDTH; x++)
+	for (x = 0; x < WIDTH / 2; x++)
 		for (y = 0; y < HEIGHT; y++)
 			brick[x][y] = 0;
 
-	brick_print_interval = 3;
+	brick_create_frame_sync = 3;
 
 	keep_moving = 1;
 	Delay = 100;
@@ -286,41 +296,175 @@ void init_game()
 
 	called = 0; // set player
 	player(0); 
+
+	// draw_hline(HEIGHT - 2, 0, WIDTH - 2, '-');
+
 }
 
-void firstWindows() {
-	removeCursor();
-	draw_box(0, 0, WIDTH - 1, HEIGHT - 1, "▒");
-	gotoxy(25, HEIGHT / 2);
-	printf("현재 초기화면 디자인중입니다.");
+void firstWindows(int sec) {
+	if (sec & 1) {
+		gotoxy(3, 2);
+		textcolor(RED1, BLACK);
+		printf("     ▣▣▣     ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣");
+		textcolor(MAGENTA1, BLACK);
+		printf("      ▣▣▣        ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣▣▣");
+		textcolor(CYAN1, BLACK);
+		printf("    ▣▣▣▣▣   "); 
+		textcolor(WHITE, BLACK);
+		printf("▣");
+
+		gotoxy(3, 3);
+		textcolor(RED1, BLACK);
+		printf("   ▣           "); 
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣    ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+
+		gotoxy(3, 4);
+		textcolor(RED1, BLACK);
+		printf("   ▣           ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣    ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+
+		gotoxy(3, 5);
+		textcolor(RED1, BLACK);
+		printf("   ▣           ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣    ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+
+		gotoxy(3, 6);
+		textcolor(RED1, BLACK);
+		printf("     ▣▣▣       ");
+		textcolor(GREEN1, BLACK);
+		printf("▣▣▣▣      "); 
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    "); 
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+	
+		gotoxy(3, 7);
+		textcolor(RED1, BLACK);
+		printf("           ▣   ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣    ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+
+		gotoxy(3, 8);
+		textcolor(RED1, BLACK);
+		printf("           ▣   ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣    ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+
+		gotoxy(3, 9);
+		textcolor(RED1, BLACK);
+		printf("           ▣   ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣    ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣      ▣    ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣      ▣      ");
+		textcolor(CYAN1, BLACK);
+		printf("▣");
+
+		gotoxy(3, 10);
+		textcolor(RED1, BLACK);
+		printf("     ▣▣▣     ");
+		textcolor(GREEN1, BLACK);
+		printf("▣        ▣      ");
+		textcolor(MAGENTA1, BLACK);
+		printf("▣▣▣        ");
+		textcolor(YELLOW1, BLACK);
+		printf("▣▣▣        ");
+		textcolor(CYAN1, BLACK);
+		printf("▣       ");
+		textcolor(WHITE, BLACK);
+		printf("▣");
+	}
+	else {
+		textcolor(WHITE, BLACK);
+		for (int y = 2; y <= 10; ++y) {
+			gotoxy(3, y);
+			printf("                                                                         ");
+		}
+	}
+	textcolor(WHITE, BLACK);
 }
 
 
 void main() {
 	unsigned char ch;
-	int run_time, start_time, gold_time;
+	int run_time, start_time, brick_time;
 	int brick_spawn_time;
 
 	int firstWindow_CallCount;
 
-START:
-
-// initialize
-	firstWindows();
+START: // initialize
+	removeCursor();
 	firstWindow_CallCount = 0;
-	gold_time = 0;
+	brick_time = 0;
 
+	draw_box(0, 0, WIDTH - 2, HEIGHT - 1, "■");
 	while (1) { 
-		gotoxy(33, HEIGHT / 2 + 5);
-		Sleep(250);
-		if (firstWindow_CallCount & 1) printf("press to start");
+		firstWindows(firstWindow_CallCount);
+		gotoxy(33, HEIGHT - 3);
+		if (firstWindow_CallCount++ & 1) printf("press to start");
 		else printf("              ");
-		if (kbhit()) break;
-		++firstWindow_CallCount;
+		Sleep(300);
+		if (kbhit()) {
+			ch = getch();
+			if (ch == ESC) goto END;
+			else break;
+		}
 	}
 
-	flush_key(); // 버퍼 한번 비우기
-
+	//flush_key(); // 버퍼 한번 비우기
 	init_game();
 	showscore();
 	showLife();
@@ -328,10 +472,16 @@ START:
 
 // main loop
 	while (1) {
+		life = 5;
+		showLife();
+		if (life == 0) break;
 		run_time = time(NULL) - start_time;
-		if (run_time > gold_time && !(run_time % brick_print_interval)){
+		//if (run_time > brick_time && (run_time % brick_print_interval == 0)) {
+		//	show_brick();
+		//	brick_time = run_time; // 마지막 GOLD 표시 시간 기억
+		//}
+		if (frame_count % brick_create_frame_sync == 0) {
 			show_brick();
-			gold_time = run_time;
 		}
 
 		if (kbhit()) {
@@ -340,7 +490,7 @@ START:
 			//player(ch);
 	
 			switch (ch) {
-			case UP:
+			case UP: // 이동
 			case DOWN:
 			case LEFT:
 			case RIGHT:
@@ -348,18 +498,18 @@ START:
 				if (!(frame_count % player_frame_sync == 0))
 					player(0);
 				break;
+			case SPACE: // 발사
+
 			default:// 방향 전환이 아니면
 				if (frame_count % player_frame_sync == 0)
 					player(0);
 			}
 		}
-		if (frame_count % gold_frame_sync == 0)
+		if (frame_count % brick_frame_sync == 0)
 			move_brick(); // 벽돌의 위치를 변경한다.
 		Sleep(Delay); // Delay 값을 줄이고
-		frame_count++; // frame_count 값으로 속도 조절을 한다.
+		++frame_count; // frame_count 값으로 속도 조절을 한다.
 	}
-
-
 
 
 
@@ -386,9 +536,9 @@ START:
 			if (ch == 'r') goto START;
 			else if(ch == 'q') break;
 		}
-
-
 	}
 	textcolor(WHITE, BLACK);
+
+END:
 	gotoxy(0, HEIGHT-1);
 }
