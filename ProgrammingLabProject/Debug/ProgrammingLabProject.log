@@ -1,17 +1,2 @@
 ﻿  main.c
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(94,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(163,9): warning C4996: 'kbhit': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _kbhit. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(164,3): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getch. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(274,18): warning C4244: '함수': 'time_t'에서 'unsigned int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(295,44): warning C4305: '함수': 'int'에서 'char'(으)로 잘립니다.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(292,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(471,25): warning C4244: '=': 'time_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(478,37): warning C4244: '=': 'time_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(460,7): warning C4996: 'kbhit': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _kbhit. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(461,9): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getch. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(487,7): warning C4996: 'kbhit': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _kbhit. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(488,9): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getch. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(534,7): warning C4996: 'kbhit': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _kbhit. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(535,9): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getch. See online help for details.
-C:\A_TaskTable\ProgrammingLabProject\ProgrammingLabProject\main.c(444,6): warning C4101: 'brick_spawn_time' :참조되지 않은 지역 변수입니다.
   ProgrammingLabProject.vcxproj -> C:\A_TaskTable\ProgrammingLabProject\Debug\ProgrammingLabProject.exe
