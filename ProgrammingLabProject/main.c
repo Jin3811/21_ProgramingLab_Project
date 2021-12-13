@@ -4,6 +4,11 @@
 #include <Windows.h>
 #include <conio.h>
 
+#pragma warning(disable:4996)
+#pragma warning(disable:4305)
+#pragma warning(disable:4244)
+#pragma warning(disable:6031)
+
 // 색상 정의
 #define BLACK	0
 #define BLUE1	1
@@ -25,6 +30,7 @@
 #define PLAYER "<-*->" // player1 표시
 #define BLANK ' ' // ' ' 로하면 흔적이 지워진다 
 #define BRICK	"□" // 벽돌. 특수문자이다.
+#define BULLET	"*" // 총알-
 
 #define ESC 0x1b //  ESC 누르면 종료
 
@@ -44,12 +50,16 @@ int score = 0; // 점수
 int brick[WIDTH / 2][HEIGHT - 2] = { 0 }; // 1이면 벽돌이 있다는 뜻, 벽돌이 2byte 문자열이므로, 행을 반으로하고 이후에 2를 곱한다.
 int bullet[WIDTH][HEIGHT - 2] = { 0 }; // 1이면 총알이 있다는 뜻
 int brick_count;
+int bullet_count;
 int called; 
 int frame_count = 1; // game 진행 frame count 로 속도 조절용으로 사용된다.
-int brick_create_frame_sync = 10; // 벽돌 생성 간격
-int player_frame_sync = 7; // 처음 시작은 10 frame 마다 이동, 즉, 100msec 마다 이동
-int brick_frame_sync = 1; //  frame 마다 한번씩 brick를 움직인다.
-// int bullet_frame_sync = 1; // 1 frame 마다 한번씩 bullet을 움직인다. -> 굳이?
+int brick_create_frame_sync = 40; // 벽돌 생성 간격
+int brick_frame_sync = 6; //  frame 마다 한번씩 brick를 움직인다.
+int player_frame_sync = 1; // 처음 시작은 10 frame 마다 이동, 즉, 100msec 마다 이동
+int bullet_frame_sync = 1; // 1 frame 마다 한번씩 bullet을 움직인다.
+
+// player의 좌표. bullet과 공유함.
+int p_oldx = 40, p_oldy = 20, p_newx = 40, p_newy = 20;
 
 void removeCursor(void) { // 커서를 안보이게 한다
 
@@ -147,10 +157,17 @@ void move_brick() {
 					printf(BRICK);
 					newbricks[x][newy] = 1; // 이동된 golds의 좌표
 				}
+				else if((2*x >= p_newx - 2 && 2*x <= p_newx + 2) && y == p_newy) {
+					gotoxy(2 * x, y);
+					printf("  ");
+					--life;
+					score = score > 5 ? score - 5 : 0;
+				}
 				else { // 바닥에 닿았다면
 					gotoxy(2*x, y);
 					printf("  "); // erase brick
 					--life; // life - 1
+					score = score > 10 ? score - 10 : 0;
 				}
 			}
 		}
@@ -189,13 +206,12 @@ void draw_hline(int y, int x1, int x2, char ch)
 
 void player(unsigned char ch)
 {
-	static int oldx = 40, oldy = 20, newx = 40, newy = 20;
 	int move_flag = 0;
 	static unsigned char last_ch = 0;
 
 	if (!called) { // 처음 또는 Restart
-		oldx = 40, oldy = 20, newx = 40, newy = 20;
-		putplayer(oldx, oldy, PLAYER);
+		p_oldx = 40, p_oldy = 20, p_newx = 40, p_newy = 20;
+		putplayer(p_oldx - 2, p_oldy, PLAYER);
 		called = 1;
 		last_ch = 0;
 		ch = 0;
@@ -206,59 +222,58 @@ void player(unsigned char ch)
 
 	switch (ch) {
 	case UP:
-		if (oldy > 1) // 0 은 Status Line
-			newy = oldy - 1;
+		if (p_oldy > 1) // 0 은 Status Line
+			p_newy = p_oldy - 1;
 		else { // 벽에 부딛치면 방향을 반대로 이동
-			newy = oldy + 1;
+			p_newy = p_oldy + 1;
 			last_ch = DOWN;
 		}
 		move_flag = 1;
 		break;
 	case DOWN:
-		if (oldy < HEIGHT - 1)
-			newy = oldy + 1;
+		if (p_oldy < HEIGHT - 1)
+			p_newy = p_oldy + 1;
 		else {
-			newy = oldy - 1;
+			p_newy = p_oldy - 1;
 			last_ch = UP;
 		}
 		move_flag = 1;
 		break;
 	case LEFT:
-		if (oldx > 0)
-			newx = oldx - 1;
+		if (p_oldx > 0)
+			p_newx = p_oldx - 1;
 		else {
-			newx = oldx + 1;
+			p_newx = p_oldx + 1;
 			last_ch = RIGHT;
 		}
 		move_flag = 1;
 		break;
 	case RIGHT:
-		if (oldx < WIDTH - 1)
-			newx = oldx + 1;
+		if (p_oldx < WIDTH - 3)
+			p_newx = p_oldx + 1;
 		else {
-			newx = oldx - 1;
+			p_newx = p_oldx - 1;
 			last_ch = LEFT;
 		}
 		move_flag = 1;
 		break;
 	}
 	if (move_flag) {
-		//erasestar(oldx, oldy); // 마지막 위치의 player 를 지우고
-		eraseplayer(oldx, oldy);
-		if (newx & 1) {// 홀수, 벽돌을 같이 지우기 위함
-			erasestar(newx - 1, newy);
-			erasestar(newx, newy);
+		eraseplayer(p_oldx, p_oldy);
+		if (p_newx & 1) {// 홀수, 벽돌을 같이 지우기 위함
+			erasestar(p_newx - 1, p_newy);
+			erasestar(p_newx, p_newy);
 		}
 		else {
-			erasestar(newx + 1, newy);
-			erasestar(newx, newy);
+			erasestar(p_newx + 1, p_newy);
+			erasestar(p_newx, p_newy);
 		}
-		putplayer(newx, newy, PLAYER); // 새로운 위치에서 player를 표시한다.
-		oldx = newx; // 마지막 위치를 기억한다.
-		oldy = newy;
-		if (brick[newx/2][newy]) {
-			score++;
-			brick[newx/2][newy] = 0;
+		putplayer(p_newx-2, p_newy, PLAYER); // 새로운 위치에서 player를 표시한다.
+		p_oldx = p_newx; // 마지막 위치를 기억한다.
+		p_oldy = p_newy;
+		if (brick[p_newx/2][p_newy ]) {
+			score;
+			brick[p_newx/2][p_newy] = 0;
 			--brick_count;
 			showscore();
 		}
@@ -274,11 +289,21 @@ void init_game()
 	srand(time(NULL));
 	score = 0;
 
+	brick_count = 0; // 벽돌 초기화
 	for (x = 0; x < WIDTH / 2; x++)
 		for (y = 0; y < HEIGHT; y++)
 			brick[x][y] = 0;
 
+	bullet_count = 0; // 총알 초기화
+	for (x = 0; x < WIDTH; x++)
+		for (y = 0; y < HEIGHT; y++)
+			bullet[x][y] = 0;
+
+
 	brick_create_frame_sync = 3;
+	frame_count = 0;
+	life = 5;
+	score = 0;
 
 	keep_moving = 1;
 	Delay = 100;
@@ -437,18 +462,71 @@ void firstWindows(int sec) {
 	textcolor(WHITE, BLACK);
 }
 
+void shotBullet() {
+	if (p_newy > 1) {
+		bullet[p_newx][p_newy - 1] = 1;
+		++bullet_count;
+		gotoxy(p_newx, p_newy);
+		printf(BULLET);
+	}
+}
+
+void moveBullet() {
+	int newy = 0;
+	int newbullet[WIDTH][HEIGHT - 2] = { 0 };
+
+	if (bullet_count == 0) return; // 총알이 없다면 그냥 return
+
+	for (int x = 0; x < WIDTH; ++x) {
+		for (int y = 0; y < HEIGHT - 1; ++y) {
+			if (bullet[x][y]) {
+				newy = y - 1;
+				if (newy > 0) {
+					if (brick[x / 2][newy]) {
+						if (x & 1) { // 홀수면
+							erasestar(x-1, newy);
+							erasestar(x, newy);
+						}
+						else {
+							erasestar(x+1, newy);
+							erasestar(x, newy);
+						}
+						brick[x / 2][newy] = 0;
+						--brick_count;
+						bullet[x][y] = 0;
+						--bullet_count;
+						erasestar(x, y);
+						++score;
+					}
+					else {
+						gotoxy(x, y);
+						putchar(BLANK);
+						gotoxy(x, newy);
+						printf(BULLET);
+						newbullet[x][newy] = 1;
+						++bullet_count;
+					}
+				}
+				else {
+					gotoxy(x, y);
+					putchar(BLANK);
+					newbullet[x][y] = 0;
+					--bullet_count;
+				}
+			}
+		}
+	}
+	memcpy(bullet, newbullet, sizeof(newbullet));
+}
 
 void main() {
 	unsigned char ch;
-	int run_time, start_time, brick_time;
-	int brick_spawn_time;
-
 	int firstWindow_CallCount;
 
 START: // initialize
 	removeCursor();
+	cls(BLACK, WHITE);
 	firstWindow_CallCount = 0;
-	brick_time = 0;
 
 	draw_box(0, 0, WIDTH - 2, HEIGHT - 1, "■");
 	while (1) { 
@@ -464,25 +542,18 @@ START: // initialize
 		}
 	}
 
-	//flush_key(); // 버퍼 한번 비우기
+	flush_key(); // 버퍼 한번 비우기
 	init_game();
 	showscore();
 	showLife();
-	start_time = time(NULL);
 
 // main loop
 	while (1) {
-		life = 5;
+		showscore();
 		showLife();
-		if (life == 0) break;
-		run_time = time(NULL) - start_time;
-		//if (run_time > brick_time && (run_time % brick_print_interval == 0)) {
-		//	show_brick();
-		//	brick_time = run_time; // 마지막 GOLD 표시 시간 기억
-		//}
-		if (frame_count % brick_create_frame_sync == 0) {
+		if (life <= 0) break;
+		if (frame_count % brick_create_frame_sync == 0)
 			show_brick();
-		}
 
 		if (kbhit()) {
 			ch = getch();
@@ -495,11 +566,9 @@ START: // initialize
 			case LEFT:
 			case RIGHT:
 				player(ch);
-				if (!(frame_count % player_frame_sync == 0))
-					player(0);
 				break;
 			case SPACE: // 발사
-
+				shotBullet();
 			default:// 방향 전환이 아니면
 				if (frame_count % player_frame_sync == 0)
 					player(0);
@@ -507,11 +576,13 @@ START: // initialize
 		}
 		if (frame_count % brick_frame_sync == 0)
 			move_brick(); // 벽돌의 위치를 변경한다.
+		if (frame_count % bullet_frame_sync == 0)
+			moveBullet();
 		Sleep(Delay); // Delay 값을 줄이고
 		++frame_count; // frame_count 값으로 속도 조절을 한다.
+		gotoxy(50, 0);
+		printf("%d, %d %d %d", frame_count, kbhit(), p_newx, p_newy);
 	}
-
-
 
 	// end
 	gotoxy(30, 7);
