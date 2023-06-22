@@ -66,7 +66,6 @@ int crash; // 벽돌과 플레이어가 부딫혔는지 판단하기 위한 변수
 int breakBrick; // 벽돌을 부쉈는지 판단하는 변수
 
 void removeCursor(void) { // 커서를 안보이게 한다
-
 	CONSOLE_CURSOR_INFO curInfo;
 	GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &curInfo);
 	curInfo.bVisible = 0;
@@ -107,7 +106,7 @@ void erasestar(int x, int y)
 	gotoxy(x, y);
 	putchar(BLANK);
 }
-
+	
 void eraseplayer(int x, int y) {
 	gotoxy(p_oldx - 2, p_oldy);
 
@@ -170,8 +169,7 @@ void showLife() // 남은 기회를 보여준다.
 	textcolor(WHITE, BLACK);
 }
 
-void show_brick()
-{
+void show_brick() {
 	int x = rand() % (WIDTH / 2 - 3) + 1; // 벽돌이 2byte이므로, 너비의 절반까지의 랜덤값 생성
 	int y = rand() % (HEIGHT / 5) + 2;  // 위의 두줄은 피한다. 또한 너무 아래에서 생성되지 않도록 생성범위를 줄인다.
 	gotoxy(2 * x, y); // 2byte이므로 각 벽돌이 서로의 출력을 지우지 않게 하기 위해 랜덤값 * 2
@@ -230,7 +228,7 @@ void flush_key()
 
 void draw_box(int x1, int y1, int x2, int y2, char* ch)
 {
-	for (int x = x1; x < x2; ++x) {
+	for (int x = x1; x <= x2; x += 2) {
 		gotoxy(x, y1);
 		printf("%s", ch);
 		gotoxy(x, y2);
